@@ -1,0 +1,95 @@
+name: Release macOS
+
+# Triggers on any tag that looks like a semver version, e.g. v1.0.0
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+*"
+  # Also allow manually triggering a draft release from the Actions UI
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Version tag (e.g. v1.0.0)"
+        required: true
+
+jobs:
+  release-macos:
+    name: Build & Release (macOS universal)
+    runs-on: macos-14   # Apple Silicon runner; can build universal binaries
+
+    permissions:
+      contents: write   # needed to create GitHub releases and upload assets
+
+    steps:
+      # ── 1. Checkout ────────────────────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ── 2. Rust toolchain ──────────────────────────────────────────────────
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          # Add both Apple Silicon and Intel targets so we can build a
+          # universal binary that runs natively on both chip families.
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+
+      # ── 3. Rust build cache ────────────────────────────────────────────────
+      # Caches the Cargo registry + build artifacts so subsequent runs are
+      # significantly faster (first build ~10 min; cached ~3 min).
+      - name: Cache Cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+
+      # ── 4. (Optional) macOS code signing ──────────────────────────────────
+      # Skip this block if you don't have an Apple Developer account.
+      # To enable signing, add these secrets in GitHub repo Settings →
+      # Secrets and variables → Actions:
+      #
+      #   APPLE_CERTIFICATE          Base64-encoded Developer ID .p12 file
+      #                              `base64 -i cert.p12 | pbcopy`
+      #   APPLE_CERTIFICATE_PASSWORD Password you set when exporting .p12
+      #   APPLE_SIGNING_IDENTITY     e.g. "Developer ID Application: Your Name (TEAMID)"
+      #   APPLE_ID                   Your Apple ID email (for notarisation)
+      #   APPLE_PASSWORD             App-specific password from appleid.apple.com
+      #   APPLE_TEAM_ID              10-char team ID from developer.apple.com
+      #
+      # Tauri reads these from the environment automatically when present.
+
+      # ── 5. Build ───────────────────────────────────────────────────────────
+      # tauri-apps/tauri-action installs the Tauri CLI, runs `tauri build`,
+      # collects the bundle artefacts, creates a GitHub Release, and uploads
+      # the .dmg (and optionally .app.tar.gz) as release assets.
+      - name: Build and publish release
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Code-signing env vars — Tauri picks these up automatically.
+          # They are no-ops when the secrets are not set.
+          APPLE_CERTIFICATE:          ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY:     ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID:                   ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD:             ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID:              ${{ secrets.APPLE_TEAM_ID }}
+        with:
+          # tagName must match the pushed tag or the manual input.
+          tagName:      ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag || github.ref_name }}
+          releaseName:  "Pastebin Desktop ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag || github.ref_name }}"
+          releaseBody:  |
+            ## What's new
+
+            See the full [CHANGELOG](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for details.
+
+            ## Installation
+
+            Download **Pastebin_${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag || github.ref_name }}_universal.dmg** below, open it, and drag **Pastebin.app** to your Applications folder.
+
+            > **macOS Gatekeeper note:** if macOS blocks the app with "unidentified developer", right-click → Open, or run:
+            > ```sh
+            > xattr -d com.apple.quarantine /Applications/Pastebin.app
+            > ```
+          releaseDraft:   true    # stays a draft until you review and publish
+          prerelease:     false
+          # Build a universal binary that runs natively on Intel and Apple Silicon.
+          args: --target universal-apple-darwin

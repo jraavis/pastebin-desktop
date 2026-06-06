@@ -1,10 +1,10 @@
-# Pastebin Desktop
+# PasteDesk
 
-A modern, open-source desktop client for [Pastebin.com](https://pastebin.com) built with **Tauri** (Rust backend) and vanilla HTML/CSS/JS frontend. No Electron, no Node.js runtime — just a lean native binary.
+An unofficial, open-source desktop client for [pastebin.com](https://pastebin.com) built with **Tauri** (Rust backend) and vanilla HTML/CSS/JS frontend. No Electron, no Node.js runtime — just a lean native binary.
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![Tauri](https://img.shields.io/badge/tauri-1.x-purple.svg)
-![Rust](https://img.shields.io/badge/rust-2021-orange.svg)
+![Tauri](https://img.shields.io/badge/tauri-2.x-purple.svg)
+![Rust](https://img.shields.io/badge/rust-2026-orange.svg)
 ![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey.svg)
 
 ---
@@ -33,7 +33,7 @@ A modern, open-source desktop client for [Pastebin.com](https://pastebin.com) bu
 | Tool | Version | Install |
 |------|---------|---------|
 | [Rust](https://rustup.rs/) | stable ≥ 1.70 | `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \| sh` |
-| Tauri CLI | 1.x | `cargo install tauri-cli --version "^1"` |
+| Tauri CLI | 2.x | `cargo install tauri-cli --version "^2"` |
 | Pastebin account | — | Free at [pastebin.com](https://pastebin.com); API dev key from [pastebin.com/doc_api](https://pastebin.com/doc_api) |
 
 > Node.js is **not required** — the frontend is plain HTML/CSS/JS with no build step.
@@ -109,9 +109,56 @@ Platform-specific installers/binaries are written to `src-tauri/target/release/b
 
 | Platform | Output |
 |----------|--------|
-| macOS | `bundle/macos/Pastebin.app` + `.dmg` |
+| macOS | `bundle/macos/PasteDesk.app` + `.dmg` |
 | Windows | `bundle/msi/*.msi` + `bundle/nsis/*.exe` |
 | Linux | `bundle/deb/*.deb` + `bundle/appimage/*.AppImage` |
+
+---
+
+## Installing from GitHub Releases
+
+GitHub Actions publishes **unsigned** builds for macOS, Windows, and Linux. No Apple Developer account or code-signing certificate is required to build or distribute.
+
+> Unofficial client — not affiliated with pastebin.com.
+
+### macOS
+
+1. Download `PasteDesk_<version>_universal.dmg` from the [Releases](https://github.com/your-username/pastebin-desktop/releases) page.
+2. Open the DMG and drag **PasteDesk.app** to **Applications**.
+3. On first launch, macOS may block the app ("unidentified developer"). Either:
+   - Right-click **PasteDesk.app** → **Open** → confirm **Open**, or
+   - Remove the quarantine flag in Terminal:
+     ```sh
+     xattr -dr com.apple.quarantine /Applications/PasteDesk.app
+     ```
+4. Launch from Applications or Spotlight.
+
+### Windows
+
+1. Download `PasteDesk_<version>_x64-setup.msi` or `PasteDesk_<version>_x64-setup.exe` from Releases.
+2. Run the installer. Windows SmartScreen may show **Windows protected your PC** because the build is unsigned.
+3. Click **More info** → **Run anyway** to proceed.
+
+### Linux
+
+**AppImage** (portable, no install):
+
+```sh
+chmod +x PasteDesk_*.AppImage
+./PasteDesk_*.AppImage
+```
+
+**Debian/Ubuntu `.deb`:**
+
+```sh
+sudo dpkg -i pastedesk_*.deb
+```
+
+If WebKitGTK is missing, install it first:
+
+```sh
+sudo apt install libwebkit2gtk-4.1-0
+```
 
 ---
 
@@ -162,7 +209,7 @@ pastebin-desktop/
 | Frontend | HTML + CSS + JS (no framework) | UI, state management, filtering, theming |
 | Vendor libs | highlight.js 11, marked 12 | Syntax highlighting, Markdown rendering |
 | IPC | Tauri `invoke()` | Frontend → Rust async command calls |
-| Backend | Rust + Tauri 1.x | HTTP calls to Pastebin API, XML parsing |
+| Backend | Rust + Tauri 2.x | HTTP calls to Pastebin API, XML parsing |
 | HTTP client | reqwest + rustls | TLS without an OpenSSL system dependency |
 | Packaging | Tauri bundler | `.app` / `.exe` / `.deb` / `.AppImage` |
 

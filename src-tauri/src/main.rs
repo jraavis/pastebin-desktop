@@ -8,6 +8,7 @@ mod models;
 
 use models::Paste;
 use reqwest::Client;
+use tauri::menu::{Menu, PredefinedMenuItem, Submenu};
 
 /// Shared HTTP client kept in Tauri's managed state.
 struct AppState {
@@ -90,11 +91,61 @@ async fn view_raw(
 
 fn main() {
     let client = Client::builder()
-        .user_agent("pastebin-gui/0.1")
+        .user_agent("pastedesk/0.1")
         .build()
         .expect("failed to build HTTP client");
 
     tauri::Builder::default()
+        .menu(|handle| {
+            // Custom menu: keep standard Edit/Window items so Cmd+C/V/X/A work,
+            // but omit "Close Window" so Cmd+W has no accelerator and does nothing.
+            let app_menu = Submenu::with_items(
+                handle,
+                "PasteDesk",
+                true,
+                &[
+                    &PredefinedMenuItem::about(handle, None, None)?,
+                    &PredefinedMenuItem::separator(handle)?,
+                    &PredefinedMenuItem::services(handle, None)?,
+                    &PredefinedMenuItem::separator(handle)?,
+                    &PredefinedMenuItem::hide(handle, None)?,
+                    &PredefinedMenuItem::hide_others(handle, None)?,
+                    &PredefinedMenuItem::show_all(handle, None)?,
+                    &PredefinedMenuItem::separator(handle)?,
+                    &PredefinedMenuItem::quit(handle, None)?,
+                ],
+            )?;
+
+            let edit_menu = Submenu::with_items(
+                handle,
+                "Edit",
+                true,
+                &[
+                    &PredefinedMenuItem::undo(handle, None)?,
+                    &PredefinedMenuItem::redo(handle, None)?,
+                    &PredefinedMenuItem::separator(handle)?,
+                    &PredefinedMenuItem::cut(handle, None)?,
+                    &PredefinedMenuItem::copy(handle, None)?,
+                    &PredefinedMenuItem::paste(handle, None)?,
+                    &PredefinedMenuItem::select_all(handle, None)?,
+                ],
+            )?;
+
+            let window_menu = Submenu::with_items(
+                handle,
+                "Window",
+                true,
+                &[
+                    &PredefinedMenuItem::minimize(handle, None)?,
+                    &PredefinedMenuItem::maximize(handle, None)?,
+                    &PredefinedMenuItem::fullscreen(handle, None)?,
+                ],
+            )?;
+
+            Menu::with_items(handle, &[&app_menu, &edit_menu, &window_menu])
+        })
+        .plugin(tauri_plugin_clipboard_manager::init())
+        .plugin(tauri_plugin_shell::init())
         .manage(AppState { client })
         .invoke_handler(tauri::generate_handler![
             login,

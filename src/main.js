@@ -2,14 +2,17 @@
 // outside the Tauri runtime (e.g. a plain browser preview) so the UI still loads.
 const TAURI = window.__TAURI__;
 const invoke = TAURI
-  ? TAURI.tauri.invoke
+  ? TAURI.core.invoke
   : async () => {
-      throw "Not running inside the Pastebin desktop app.";
+      throw "Not running inside the PasteDesk app.";
     };
 const shellOpen = TAURI ? TAURI.shell.open : (url) => window.open(url, "_blank");
 const clipboard = TAURI
-  ? TAURI.clipboard
-  : { writeText: (t) => navigator.clipboard.writeText(t) };
+  ? TAURI.clipboardManager
+  : {
+      writeText: (t) => navigator.clipboard.writeText(t),
+      readText: () => navigator.clipboard.readText(),
+    };
 
 // ---------- App state ----------
 const PAGE_SIZE = 12;
@@ -91,6 +94,31 @@ function refreshAuthUI() {
   $("#auth-label").textContent = loggedIn
     ? state.username || "Logged in"
     : "Guest";
+  $("#auth-sub").textContent = loggedIn
+    ? "Session active"
+    : "Not logged in";
+
+  // topbar avatar
+  const av = $("#topbar-avatar");
+  if (av) {
+    av.textContent = loggedIn
+      ? (state.username || "?").slice(0, 1).toUpperCase()
+      : "?";
+    av.classList.toggle("on", loggedIn);
+  }
+
+  // account hero
+  const heroName = $("#account-name");
+  const heroSub = $("#account-sub");
+  const heroAv = $("#account-avatar");
+  if (heroName) heroName.textContent = loggedIn ? state.username || "Logged in" : "Not signed in";
+  if (heroSub) heroSub.textContent = loggedIn ? "Session active. You can manage pastes." : "Sign in to manage your pastes.";
+  if (heroAv) {
+    heroAv.textContent = loggedIn
+      ? (state.username || "?").slice(0, 1).toUpperCase()
+      : "?";
+    heroAv.classList.toggle("on", loggedIn);
+  }
 
   // Account view: login form vs logout
   $("#btn-login").classList.toggle("hidden", loggedIn);
@@ -118,7 +146,10 @@ function refreshAuthUI() {
     const list = $("#pastes-list");
     if (list)
       list.innerHTML =
-        '<div class="empty">Log in from Account to see your pastes.</div>';
+        '<div class="empty empty-hero"><div class="empty-ico">' +
+        '<svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3H6a2 2 0 0 0-2 2v11"/><path d="M8 7h8"/><path d="M8 11h5"/><path d="M19 17v3a2 2 0 0 1-2 2H6"/><path d="m17 14 4 4-4 4"/></svg>' +
+        '</div><div class="empty-title">Your pastes will appear here</div>' +
+        '<div class="empty-sub">Log in from the Account tab to load your library.</div></div>';
     $("#pager").classList.add("hidden");
     $("#pastes-count").textContent = "";
   }
@@ -144,6 +175,19 @@ function applyTheme() {
   $$("#seg-theme button").forEach((b) =>
     b.classList.toggle("active", b.dataset.themeChoice === state.theme)
   );
+  // reflect in header toggle (shows current choice icon + tooltip)
+  const tog = $("#btn-theme-toggle");
+  if (tog) {
+    tog.dataset.theme = state.theme;
+    tog.title = `Theme: ${state.theme} (click to change)`;
+    tog.setAttribute("aria-label", `Theme: ${state.theme}`);
+  }
+}
+
+function setTheme(choice) {
+  state.theme = choice;
+  localStorage.setItem("pb_theme", state.theme);
+  applyTheme();
 }
 
 mql.addEventListener("change", () => {
@@ -151,11 +195,14 @@ mql.addEventListener("change", () => {
 });
 
 $$("#seg-theme button").forEach((b) => {
-  b.addEventListener("click", () => {
-    state.theme = b.dataset.themeChoice;
-    localStorage.setItem("pb_theme", state.theme);
-    applyTheme();
-  });
+  b.addEventListener("click", () => setTheme(b.dataset.themeChoice));
+});
+
+// Header theme toggle cycles auto → light → dark → auto
+const THEME_CYCLE = ["auto", "light", "dark"];
+$("#btn-theme-toggle").addEventListener("click", () => {
+  const next = THEME_CYCLE[(THEME_CYCLE.indexOf(state.theme) + 1) % THEME_CYCLE.length];
+  setTheme(next);
 });
 
 // ======================================================================
@@ -163,6 +210,8 @@ $$("#seg-theme button").forEach((b) => {
 // ======================================================================
 function applyZoom() {
   $("#modal-body").style.fontSize = `${state.zoom}px`;
+  // drive the create-view editor + overlay via a shared CSS var
+  document.documentElement.style.setProperty("--editor-fs", `${state.zoom}px`);
   $("#set-zoom").value = state.zoom;
   $("#set-zoom-val").textContent = `${state.zoom}px`;
 }
@@ -179,6 +228,10 @@ $("#set-zoom").addEventListener("input", (e) =>
 $("#zoom-in").addEventListener("click", () => setZoom(state.zoom + 1));
 $("#zoom-out").addEventListener("click", () => setZoom(state.zoom - 1));
 $("#zoom-reset").addEventListener("click", () => setZoom(14));
+
+// Header font-size quick controls (share the zoom state)
+$("#btn-font-inc").addEventListener("click", () => setZoom(state.zoom + 1));
+$("#btn-font-dec").addEventListener("click", () => setZoom(state.zoom - 1));
 
 // ======================================================================
 // Sidebar collapse
@@ -214,15 +267,49 @@ $("#set-sidebar").addEventListener("change", (e) =>
 // ======================================================================
 // Navigation
 // ======================================================================
+const PAGE_META = {
+  create:  { title: "New Paste",      sub: "Share a snippet in seconds." },
+  pastes:  { title: "My Pastes",      sub: "Browse, search, and re-open." },
+  settings:{ title: "Settings",       sub: "Appearance & preferences." },
+  account: { title: "Account",        sub: "Connect your pastebin.com account." },
+};
+
+function setView(name) {
+  const btn = document.querySelector(`.nav-item[data-view="${name}"]`);
+  $$(".nav-item").forEach((b) => b.classList.toggle("active", b === btn));
+  $$(".view").forEach((v) => v.classList.remove("active"));
+  const target = $(`#view-${name}`);
+  if (target) target.classList.add("active");
+  const meta = PAGE_META[name] || { title: name, sub: "" };
+  $("#page-title").textContent = meta.title;
+  $("#page-sub").textContent = meta.sub;
+  // show topbar search only on pastes view
+  const ts = $("#topbar-search");
+  if (ts) ts.hidden = name !== "pastes";
+  if (name === "pastes") loadPastes(false);
+}
+
 $$(".nav-item").forEach((btn) => {
-  btn.addEventListener("click", () => {
-    const view = btn.dataset.view;
-    $$(".nav-item").forEach((b) => b.classList.toggle("active", b === btn));
-    $$(".view").forEach((v) => v.classList.remove("active"));
-    const target = $(`#view-${view}`);
-    target.classList.add("active");
-    if (view === "pastes") loadPastes(false); // cached unless empty
-  });
+  btn.addEventListener("click", () => setView(btn.dataset.view));
+});
+
+// topbar avatar → jump to account
+$("#topbar-user").addEventListener("click", () => setView("account"));
+
+// topbar search (My Pastes)
+$("#topbar-search-input").addEventListener("input", (e) => {
+  state.search = e.target.value;
+  state.page = 1;
+  renderPastesView();
+  $("#topbar-search-clear").classList.toggle("hidden", !state.search);
+});
+$("#topbar-search-clear").addEventListener("click", () => {
+  state.search = "";
+  $("#topbar-search-input").value = "";
+  $("#topbar-search-clear").classList.add("hidden");
+  state.page = 1;
+  renderPastesView();
+  $("#topbar-search-input").focus();
 });
 
 // ---------- Ripple ----------
@@ -276,11 +363,135 @@ $("#btn-create").addEventListener("click", async () => {
     });
     $("#p-code").value = "";
     $("#p-title").value = "";
+    updateCharCount();
     state.pastesCache = null; // new paste invalidates the list cache
   } catch (err) {
     toast(String(err), "err");
   } finally {
     setLoading(btn, false);
+  }
+});
+
+// Pastebin format → hljs language name (only entries that differ or need null)
+const HLJS_LANG = {
+  text: null,
+  html5: "xml",
+  cpp: "cpp",
+  c: "c",
+};
+
+// editor toolbar
+function updateCharCount() {
+  const v = $("#p-code").value;
+  const lines = v ? v.split(/\r\n|\r|\n/).length : 0;
+  $("#char-count").textContent = `${v.length.toLocaleString()} chars · ${lines.toLocaleString()} lines`;
+}
+function updateEditorHighlight() {
+  const hl = $("#p-code-hl");
+  if (!hl) return;
+  const raw = $("#p-code").value;
+  const fmt = $("#p-format").value;
+  // The textarea text itself is transparent; this overlay is what the user
+  // actually sees. So it must always be populated — fall back to escaped
+  // plain text when highlighting is off or unavailable, else text vanishes.
+  if (!raw) {
+    hl.innerHTML = "";
+    return;
+  }
+  if (fmt === "text" || !window.hljs) {
+    hl.innerHTML = escapeHtml(raw);
+  } else {
+    const lang = fmt in HLJS_LANG ? HLJS_LANG[fmt] : fmt;
+    try {
+      hl.innerHTML = lang && window.hljs.getLanguage(lang)
+        ? window.hljs.highlight(raw, { language: lang }).value
+        : window.hljs.highlightAuto(raw).value;
+    } catch {
+      hl.innerHTML = escapeHtml(raw);
+    }
+  }
+  // keep pre scroll in sync with textarea
+  const pre = hl.closest(".code-editor-hl");
+  if (pre) pre.scrollTop = $("#p-code").scrollTop;
+}
+
+// ---- Markdown preview (editor) ----
+let mdPreviewOn = false;
+function renderMdPreview() {
+  const pane = $("#p-md-preview");
+  if (!pane || !mdPreviewOn) return;
+  const raw = $("#p-code").value;
+  pane.innerHTML = window.marked
+    ? sanitize(window.marked.parse(raw))
+    : escapeHtml(raw);
+}
+function syncMdPreviewBtn() {
+  const btn = $("#btn-md-preview");
+  if (!btn) return;
+  const isMd = $("#p-format").value === "markdown";
+  btn.hidden = !isMd;
+  if (!isMd && mdPreviewOn) setMdPreview(false);
+}
+function setMdPreview(on) {
+  mdPreviewOn = on;
+  const btn = $("#btn-md-preview");
+  const pane = $("#p-md-preview");
+  const wrap = $("#p-code").closest(".code-editor-wrap");
+  if (btn) btn.setAttribute("aria-pressed", String(on));
+  if (btn) btn.classList.toggle("active", on);
+  if (pane) pane.hidden = !on;
+  if (wrap) wrap.classList.toggle("preview-on", on);
+  if (on) renderMdPreview();
+}
+
+$("#p-code").addEventListener("input", () => { updateCharCount(); updateEditorHighlight(); renderMdPreview(); });
+$("#p-code").addEventListener("scroll", () => {
+  const hl = $("#p-code-hl")?.closest(".code-editor-hl");
+  if (hl) hl.scrollTop = $("#p-code").scrollTop;
+});
+// Tab inserts a tab char instead of moving focus; Shift+Tab outdents.
+$("#p-code").addEventListener("keydown", (e) => {
+  if (e.key !== "Tab") return;
+  e.preventDefault();
+  const ta = e.target;
+  const { selectionStart: s, selectionEnd: en, value: v } = ta;
+  if (e.shiftKey) {
+    // remove one leading tab from the line at the caret
+    const lineStart = v.lastIndexOf("\n", s - 1) + 1;
+    if (v[lineStart] === "\t") {
+      ta.value = v.slice(0, lineStart) + v.slice(lineStart + 1);
+      const shift = s > lineStart ? 1 : 0;
+      ta.selectionStart = s - shift;
+      ta.selectionEnd = en - shift;
+    }
+  } else {
+    ta.value = v.slice(0, s) + "\t" + v.slice(en);
+    ta.selectionStart = ta.selectionEnd = s + 1;
+  }
+  ta.dispatchEvent(new Event("input", { bubbles: true }));
+});
+$("#p-format").addEventListener("change", () => { updateEditorHighlight(); syncMdPreviewBtn(); });
+$("#btn-md-preview").addEventListener("click", () => setMdPreview(!mdPreviewOn));
+updateCharCount();
+syncMdPreviewBtn();
+
+$("#btn-clear-content").addEventListener("click", () => {
+  if (!$("#p-code").value) return;
+  $("#p-code").value = "";
+  $("#p-code").focus();
+  updateCharCount();
+});
+$("#btn-paste-from-clip").addEventListener("click", async () => {
+  try {
+    const text = await clipboard.readText();
+    if (!text) return toast("Clipboard is empty.", "info");
+    const ta = $("#p-code");
+    ta.value = (ta.value ? ta.value + "\n" : "") + text;
+    ta.focus();
+    updateCharCount();
+    toast("Pasted from clipboard.", "ok", { timeout: 1800 });
+  } catch (e) {
+    toast("Could not read clipboard: " + e, "err");
   }
 });
 
@@ -378,9 +589,9 @@ async function loadPastes(force) {
     renderPastesView();
   } catch (err) {
     state.pastesCache = null;
-    $("#pastes-list").innerHTML = `<div class="empty">${escapeHtml(
+    $("#pastes-list").innerHTML = `<div class="empty empty-hero"><div class="empty-ico">⚠</div><div class="empty-title">Couldn't load pastes</div><div class="empty-sub">${escapeHtml(
       String(err)
-    )}</div>`;
+    )}</div></div>`;
     $("#pastes-count").textContent = "";
     toast(String(err), "err");
   }
@@ -438,25 +649,42 @@ function renderPastes(pastes) {
   const list = $("#pastes-list");
   list.innerHTML = "";
   if (!pastes.length) {
-    list.innerHTML = '<div class="empty">No pastes match your filters.</div>';
+    list.innerHTML = '<div class="empty empty-hero"><div class="empty-ico">' +
+      '<svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>' +
+      '</div><div class="empty-title">No pastes match your filters</div>' +
+      '<div class="empty-sub">Try a different search term or clear the visibility filter.</div></div>';
     return;
   }
   pastes.forEach((p, i) => {
     const card = document.createElement("div");
     card.className = "paste-card";
-    card.style.animationDelay = `${Math.min(i * 40, 400)}ms`;
+    card.style.animationDelay = `${Math.min(i * 35, 350)}ms`;
+    const visClass = p.private === "0" ? "vis-public" : p.private === "1" ? "vis-unlisted" : "vis-private";
+    const hits = parseInt(p.hits, 10) || 0;
+    const hitsLabel = hits >= 1000 ? (hits / 1000).toFixed(1) + "k" : String(hits);
     card.innerHTML = `
-      <div class="pc-title">${escapeHtml(p.title) || "Untitled"}</div>
+      <div class="pc-head">
+        <div class="pc-title">${escapeHtml(p.title) || "Untitled"}</div>
+        <span class="pc-vis ${visClass}" title="${VIS[p.private] || "?"}"></span>
+      </div>
       <div class="pc-meta">
-        <span class="chip">${escapeHtml(p.format) || "text"}</span>
+        <span class="chip"><span class="chip-dot"></span>${escapeHtml(p.format) || "text"}</span>
         <span class="chip dim">${VIS[p.private] || "?"}</span>
-        <span class="chip dim">${escapeHtml(p.hits || "0")} hits</span>
+        <span class="chip dim">${escapeHtml(hitsLabel)} ${hits === 1 ? "hit" : "hits"}</span>
         <span class="chip dim">${fmtDate(p.date)}</span>
       </div>
       <div class="pc-actions">
-        <button class="btn small view-btn">View</button>
-        <button class="btn small open-btn">Open</button>
-        <button class="btn small ghost danger del-btn">Delete</button>
+        <button class="btn small view-btn" title="Preview in app">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
+          View
+        </button>
+        <button class="btn small ghost open-btn" title="Open on pastebin.com">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg>
+          Open
+        </button>
+        <button class="btn small ghost danger del-btn" title="Delete paste" aria-label="Delete">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6 18 20a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+        </button>
       </div>`;
     card.querySelector(".view-btn").addEventListener("click", () => viewRaw(p));
     card.querySelector(".open-btn").addEventListener("click", () =>
@@ -473,11 +701,6 @@ function renderPastes(pastes) {
 $("#btn-refresh").addEventListener("click", () => loadPastes(true));
 
 // Controls — operate on the cache, never refetch
-$("#flt-search").addEventListener("input", (e) => {
-  state.search = e.target.value;
-  state.page = 1;
-  renderPastesView();
-});
 $("#flt-vis").addEventListener("change", (e) => {
   state.visFilter = e.target.value;
   state.page = 1;
@@ -490,8 +713,20 @@ $("#flt-sort").addEventListener("change", (e) => {
 });
 $("#flt-order").addEventListener("click", (e) => {
   state.sortDir = state.sortDir === "asc" ? "desc" : "asc";
-  e.currentTarget.dataset.dir = state.sortDir;
-  e.currentTarget.textContent = state.sortDir === "asc" ? "↑ Asc" : "↓ Desc";
+  const btn = e.currentTarget;
+  btn.dataset.dir = state.sortDir;
+  // rotate arrow icon
+  const path = btn.querySelector("svg path");
+  if (path) {
+    // animate a flip
+    btn.animate(
+      [
+        { transform: "rotate(0deg)" },
+        { transform: "rotate(180deg)" },
+      ],
+      { duration: 240, easing: "cubic-bezier(0.22, 1, 0.36, 1)", fill: "forwards" }
+    );
+  }
   renderPastesView();
 });
 $("#pg-prev").addEventListener("click", () => {
@@ -510,6 +745,7 @@ $("#pg-next").addEventListener("click", () => {
 // ======================================================================
 async function viewRaw(p) {
   $("#modal-title").textContent = p.title || "Paste";
+  $("#modal-format-chip").textContent = (p.format || "text").toUpperCase();
   state.modalFormat = p.format || "text";
   state.modalRaw = "";
   state.modalMode = "preview";
@@ -562,13 +798,6 @@ function sanitize(html) {
   });
   return tpl.innerHTML;
 }
-
-const HLJS_LANG = {
-  text: null,
-  html5: "xml",
-  cpp: "cpp",
-  c: "c",
-};
 
 function renderModalBody() {
   const body = $("#modal-body");
@@ -634,6 +863,15 @@ $("#modal").addEventListener("click", (e) => {
 });
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") closeModal();
+  // ⌘/Ctrl + 1..4 → switch view
+  if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey) {
+    const map = { "1": "create", "2": "pastes", "3": "settings", "4": "account",
+                  "n": "create", "p": "pastes", ",": "settings" };
+    if (map[e.key]) {
+      e.preventDefault();
+      setView(map[e.key]);
+    }
+  }
 });
 
 // ======================================================================

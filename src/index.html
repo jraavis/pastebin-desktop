@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Pastebin</title>
+    <title>PasteDesk</title>
     <link rel="stylesheet" href="styles.css" />
     <link rel="stylesheet" href="vendor/hljs-dark.css" id="hljs-dark" />
     <link rel="stylesheet" href="vendor/hljs-light.css" id="hljs-light" disabled />
@@ -13,60 +13,133 @@
       <!-- Sidebar -->
       <aside class="sidebar">
         <div class="brand">
-          <div class="brand-mark">P</div>
-          <span class="brand-name">Pastebin</span>
+          <div class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8.5 12 4l8 4.5v7L12 20l-8-4.5v-7Z"/><path d="M12 11v9"/><path d="M4 8.5 12 13l8-4.5"/><path d="M7.5 14.5h3"/><path d="M7.5 17h5"/></svg>
+          </div>
+          <div class="brand-text">
+            <span class="brand-name">PasteDesk</span>
+            <span class="brand-unofficial">Unofficial client</span>
+          </div>
         </div>
-        <nav class="nav">
+        <nav class="nav" aria-label="Primary">
           <button class="nav-item active" data-view="create">
-            <span class="nav-ico">✏️</span><span>Create</span>
+            <span class="nav-ico" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4Z"/></svg>
+            </span><span>Create</span>
+            <span class="nav-key">⌘N</span>
           </button>
           <button class="nav-item" data-view="pastes">
-            <span class="nav-ico">📋</span><span>My Pastes</span>
+            <span class="nav-ico" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 9h18"/><path d="M9 3v18"/></svg>
+            </span><span>My Pastes</span>
+            <span class="nav-key">⌘P</span>
           </button>
           <button class="nav-item" data-view="settings">
-            <span class="nav-ico">⚙️</span><span>Settings</span>
+            <span class="nav-ico" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg>
+            </span><span>Settings</span>
+            <span class="nav-key">⌘,</span>
           </button>
           <button class="nav-item" data-view="account">
-            <span class="nav-ico">👤</span><span>Account</span>
+            <span class="nav-ico" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
+            </span><span>Account</span>
           </button>
         </nav>
         <div class="auth-status" id="auth-status">
           <span class="dot offline" id="auth-dot"></span>
-          <span id="auth-label">Guest</span>
+          <div class="auth-text">
+            <span class="auth-label" id="auth-label">Guest</span>
+            <span class="auth-sub" id="auth-sub">Not logged in</span>
+          </div>
         </div>
       </aside>
 
       <!-- Main -->
       <main class="content">
-        <!-- Floating hamburger -->
-        <button class="hamburger" id="btn-hamburger" title="Toggle sidebar">
-          <span></span><span></span><span></span>
-        </button>
+        <!-- Topbar -->
+        <header class="topbar">
+          <div class="topbar-left">
+            <button class="hamburger" id="btn-hamburger" title="Toggle sidebar" aria-label="Toggle sidebar">
+              <span></span><span></span><span></span>
+            </button>
+            <div class="topbar-title">
+              <h2 id="page-title">New Paste</h2>
+              <p class="topbar-sub" id="page-sub">Share a snippet in seconds.</p>
+            </div>
+          </div>
+          <div class="topbar-right">
+            <div class="topbar-search" id="topbar-search" hidden>
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+              <input type="search" id="topbar-search-input" placeholder="Search pastes…" />
+              <button class="topbar-search-clear hidden" id="topbar-search-clear" aria-label="Clear search">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+              </button>
+            </div>
+            <div class="topbar-a11y" role="group" aria-label="Accessibility">
+              <div class="topbar-font" role="group" aria-label="Font size">
+                <button class="icon-btn" id="btn-font-dec" title="Decrease font size" aria-label="Decrease font size">A−</button>
+                <button class="icon-btn" id="btn-font-inc" title="Increase font size" aria-label="Increase font size">A+</button>
+              </div>
+              <button class="icon-btn" id="btn-theme-toggle" title="Toggle theme" aria-label="Toggle theme">
+                <svg class="ico-auto" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/></svg>
+                <svg class="ico-light" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m4.93 19.07 1.41-1.41"/><path d="m17.66 6.34 1.41-1.41"/></svg>
+                <svg class="ico-dark" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg>
+              </button>
+            </div>
+            <div class="topbar-user" id="topbar-user" title="Account">
+              <span class="topbar-avatar" id="topbar-avatar">?</span>
+            </div>
+          </div>
+        </header>
 
         <!-- CREATE -->
         <section class="view active" id="view-create">
-          <header class="view-head">
-            <div>
-              <h1>New Paste</h1>
-              <p class="subtitle">Share a snippet in seconds.</p>
-            </div>
-          </header>
-
           <div class="card glass form-card">
-            <div class="field">
-              <label for="p-title">Title</label>
-              <input id="p-title" type="text" placeholder="Untitled paste" />
-            </div>
+            <div class="form-grid">
+              <div class="field field-grow">
+                <label for="p-title">
+                  Title
+                  <span class="field-optional">optional</span>
+                </label>
+                <input id="p-title" type="text" placeholder="Untitled paste" maxlength="100" />
+              </div>
 
-            <div class="field">
-              <label for="p-code">Content</label>
-              <textarea id="p-code" rows="12" spellcheck="false"
-                placeholder="Paste your code or text here…"></textarea>
-            </div>
+              <div class="field field-full">
+                <div class="editor-head">
+                  <label for="p-code">
+                    Content
+                    <span class="req">*</span>
+                  </label>
+                  <div class="editor-tools">
+                    <span class="char-count" id="char-count">0 chars · 0 lines</span>
+                    <button type="button" class="icon-btn" id="btn-paste-from-clip" title="Paste from clipboard" aria-label="Paste from clipboard">
+                      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg>
+                      Paste
+                    </button>
+                    <button type="button" class="icon-btn" id="btn-md-preview" title="Toggle Markdown preview" aria-label="Toggle Markdown preview" aria-pressed="false" hidden>
+                      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                      Preview
+                    </button>
+                    <button type="button" class="icon-btn" id="btn-clear-content" title="Clear content" aria-label="Clear content">
+                      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6 18 20a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+                      Clear
+                    </button>
+                  </div>
+                </div>
+                <div class="code-editor-wrap">
+                  <pre class="code-editor-hl" aria-hidden="true"><code id="p-code-hl" class="hljs"></code></pre>
+                  <textarea id="p-code" rows="14" spellcheck="false"
+                    placeholder="Paste your code or text here…"></textarea>
+                  <div class="code-editor-preview raw-body mode-md" id="p-md-preview" hidden></div>
+                </div>
+              </div>
 
-            <div class="row">
               <div class="field">
-                <label for="p-format">Syntax</label>
+                <label for="p-format">
+                  <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m18 16 4-4-4-4"/><path d="m6 8-4 4 4 4"/><path d="m14.5 4-5 16"/></svg>
+                  Syntax
+                </label>
                 <select id="p-format">
                   <option value="text">Plain Text</option>
                   <option value="rust">Rust</option>
@@ -87,7 +160,10 @@
               </div>
 
               <div class="field">
-                <label for="p-expire">Expires</label>
+                <label for="p-expire">
+                  <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+                  Expires
+                </label>
                 <select id="p-expire">
                   <option value="N">Never</option>
                   <option value="10M">10 Minutes</option>
@@ -102,7 +178,10 @@
               </div>
 
               <div class="field">
-                <label for="p-private">Visibility</label>
+                <label for="p-private">
+                  <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
+                  Visibility
+                </label>
                 <select id="p-private">
                   <option value="0">Public</option>
                   <option value="1" selected>Unlisted</option>
@@ -111,46 +190,47 @@
               </div>
             </div>
 
-            <button class="btn primary ripple" id="btn-create">
-              <span class="btn-label">Create Paste</span>
-              <span class="spinner hidden"></span>
-            </button>
+            <div class="form-foot">
+              <p class="form-hint">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/></svg>
+                Stored on pastebin.com · public/unlisted work without login
+              </p>
+              <div class="actions">
+                <button class="btn primary ripple" id="btn-create">
+                  <span class="btn-label">Create Paste</span>
+                  <span class="spinner hidden"></span>
+                </button>
+              </div>
+            </div>
           </div>
         </section>
 
         <!-- PASTES -->
         <section class="view" id="view-pastes">
-          <header class="view-head">
-            <div>
-              <h1>My Pastes</h1>
-              <p class="subtitle" id="pastes-count"></p>
-            </div>
-            <button class="btn ghost" id="btn-refresh">↻ Refresh</button>
-          </header>
-
           <div class="paste-controls" id="paste-controls">
-            <input
-              type="search"
-              id="flt-search"
-              class="ctl-search"
-              placeholder="Search title…"
-            />
-            <select id="flt-vis">
+            <select id="flt-vis" class="ctl-pill" aria-label="Filter by visibility">
               <option value="all">All visibility</option>
               <option value="0">Public</option>
               <option value="1">Unlisted</option>
               <option value="2">Private</option>
             </select>
-            <select id="flt-sort">
-              <option value="date">Date</option>
-              <option value="title">Title</option>
-              <option value="hits">Hits</option>
-            </select>
-            <button class="btn ghost small" id="flt-order" data-dir="desc" title="Sort direction">
-              ↓ Desc
+            <div class="ctl-pill ctl-sort">
+              <select id="flt-sort" aria-label="Sort by">
+                <option value="date">Date</option>
+                <option value="title">Title</option>
+                <option value="hits">Hits</option>
+              </select>
+              <button class="ctl-sort-order" id="flt-order" data-dir="desc" title="Toggle sort direction" aria-label="Toggle sort direction">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg>
+              </button>
+            </div>
+            <button class="btn ghost small icon-text" id="btn-refresh" title="Reload from server">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/><path d="M3 21v-5h5"/></svg>
+              Refresh
             </button>
           </div>
 
+          <div class="results-meta" id="pastes-count"></div>
           <div id="pastes-list" class="pastes-list"></div>
 
           <div class="pager hidden" id="pager">
@@ -162,20 +242,22 @@
 
         <!-- SETTINGS (preferences) -->
         <section class="view" id="view-settings">
-          <header class="view-head">
-            <div>
-              <h1>Settings</h1>
-              <p class="subtitle">Appearance &amp; preferences.</p>
-            </div>
-          </header>
-
           <div class="card glass form-card">
             <div class="field">
               <label>Theme</label>
               <div class="segmented" id="seg-theme">
-                <button data-theme-choice="auto" class="active">Auto</button>
-                <button data-theme-choice="light">Light</button>
-                <button data-theme-choice="dark">Dark</button>
+                <button data-theme-choice="auto" class="active">
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/></svg>
+                  Auto
+                </button>
+                <button data-theme-choice="light">
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m4.93 19.07 1.41-1.41"/><path d="m17.66 6.34 1.41-1.41"/></svg>
+                  Light
+                </button>
+                <button data-theme-choice="dark">
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg>
+                  Dark
+                </button>
               </div>
               <small class="hint">Auto follows your system appearance.</small>
             </div>
@@ -192,6 +274,7 @@
             <div class="field">
               <label class="switch-row">
                 <input type="checkbox" id="set-sidebar" />
+                <span class="switch-track" aria-hidden="true"></span>
                 <span>Collapse sidebar by default</span>
               </label>
             </div>
@@ -200,31 +283,39 @@
 
         <!-- ACCOUNT (login) -->
         <section class="view" id="view-account">
-          <header class="view-head">
-            <div>
-              <h1>Account</h1>
-              <p class="subtitle">Connect your Pastebin account.</p>
-            </div>
-          </header>
-
           <div class="card glass form-card">
+            <div class="account-hero" id="account-hero">
+              <div class="account-avatar" id="account-avatar">?</div>
+              <div>
+                <div class="account-name" id="account-name">Not signed in</div>
+                <div class="account-sub" id="account-sub">Sign in to manage your pastes.</div>
+              </div>
+            </div>
+
             <div class="field">
-              <label for="s-devkey">API Dev Key</label>
+              <label for="s-devkey">
+                API Dev Key
+                <span class="req">*</span>
+              </label>
               <div class="secret">
-                <input id="s-devkey" type="password" placeholder="Your api_dev_key" />
-                <button class="eye" type="button" data-target="s-devkey" title="Show / hide">👁</button>
+                <input id="s-devkey" type="password" placeholder="Your api_dev_key" autocomplete="off" />
+                <button class="eye" type="button" data-target="s-devkey" title="Show / hide" aria-label="Show / hide dev key">
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
+                </button>
               </div>
               <small class="hint">Get it from pastebin.com/doc_api (must be logged in).</small>
             </div>
             <div class="field" id="fld-user">
               <label for="s-user">Username</label>
-              <input id="s-user" type="text" placeholder="Pastebin username" />
+              <input id="s-user" type="text" placeholder="Your username" autocomplete="username" />
             </div>
             <div class="field" id="fld-pass">
               <label for="s-pass">Password</label>
               <div class="secret">
-                <input id="s-pass" type="password" placeholder="Pastebin password" />
-                <button class="eye" type="button" data-target="s-pass" title="Show / hide">👁</button>
+                <input id="s-pass" type="password" placeholder="Your password" autocomplete="current-password" />
+                <button class="eye" type="button" data-target="s-pass" title="Show / hide" aria-label="Show / hide password">
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
+                </button>
               </div>
               <small class="hint">Not stored. Used once to fetch a session key.</small>
             </div>
@@ -233,7 +324,10 @@
                 <span class="btn-label">Log In</span>
                 <span class="spinner hidden"></span>
               </button>
-              <button class="btn ghost" id="btn-logout">Log Out</button>
+              <button class="btn ghost" id="btn-logout">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>
+                Log Out
+              </button>
             </div>
           </div>
         </section>
@@ -244,19 +338,30 @@
     <div class="modal-backdrop hidden" id="modal">
       <div class="modal glass">
         <div class="modal-head">
-          <h2 id="modal-title">Paste</h2>
+          <div class="modal-title-row">
+            <h2 id="modal-title">Paste</h2>
+            <span class="modal-format-chip" id="modal-format-chip">text</span>
+          </div>
           <div class="modal-actions">
             <div class="segmented sm" id="seg-mode">
-              <button data-mode="preview" class="active">Preview</button>
+              <button data-mode="preview" class="active">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
+                Preview
+              </button>
               <button data-mode="raw">Raw</button>
             </div>
             <div class="zoomctl">
-              <button class="btn small ghost" id="zoom-out" title="Zoom out">A−</button>
-              <button class="btn small ghost" id="zoom-reset" title="Reset">⤢</button>
-              <button class="btn small ghost" id="zoom-in" title="Zoom in">A+</button>
+              <button class="btn small ghost" id="zoom-out" title="Zoom out" aria-label="Zoom out">A−</button>
+              <button class="btn small ghost" id="zoom-reset" title="Reset zoom" aria-label="Reset zoom">⤢</button>
+              <button class="btn small ghost" id="zoom-in" title="Zoom in" aria-label="Zoom in">A+</button>
             </div>
-            <button class="btn small" id="modal-copy">Copy</button>
-            <button class="btn small ghost" id="modal-close">Close</button>
+            <button class="btn small" id="modal-copy">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              Copy
+            </button>
+            <button class="btn small ghost icon-only" id="modal-close" title="Close" aria-label="Close">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            </button>
           </div>
         </div>
         <div id="modal-body" class="raw-body"></div>
